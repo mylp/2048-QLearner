@@ -2,7 +2,6 @@ import random
 import numpy as np
 from game import *
 import curses
-import utils
 
 class QLearner:
     def __init__(self):
@@ -11,6 +10,8 @@ class QLearner:
         self.epsilon = 0.01
         self.discount = 0.8
 
+    def getNextAction(self):
+        return 'Up'
     def getLegalActions(self, state):
         return 'Up' # Test purposes
 
@@ -78,5 +79,49 @@ class QLearner:
     def getValue(self, state):
         return self.computeValueFromQValues(state)
 
+    def play(self):
+        game_field = GameField(win=2048)
+        state_actions = {}
+
+        def init():
+            game_field.reset()
+            return 'Game'
+
+        state_actions['Init'] = init
+
+        def not_game(state):
+            action = 'Exit'
+            responses = defaultdict(lambda: state)
+            responses['Restart'], responses['Exit'] = 'Init', 'Exit'
+            return responses[action]
+        
+        state_actions['Win'] = lambda: not_game('Win')
+        state_actions['Gameover'] = lambda: not_game('Gameover')
+
+        def game():
+            a = ['Up', 'Left', 'Down', 'Right']
+            random.shuffle(a)
+            action = a[0]
+            print(game_field.score)
+            if action == 'Restart':
+                return 'Init'
+            if action == 'Exit':
+                return 'Exit'
+            if game_field.move(action):  # move successful
+                if game_field.is_win():
+                    return 'Win'
+                if game_field.is_gameover():
+                    return 'Gameover'
+            return 'Game'
+        state_actions['Game'] = game
+
+        state = 'Init'
+        while state != 'Exit':
+            state = state_actions[state]()
+
 def __main__():
-  pass
+  agent = QLearner()
+  agent.play()
+
+
+__main__()
