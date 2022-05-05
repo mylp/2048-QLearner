@@ -8,11 +8,12 @@ actions = ['Up', 'Left', 'Down', 'Right', 'Restart', 'Exit']
 
 class QLearner:
     def __init__(self):
-        self.field = GameField(win=2048)
-        self.qvs = {}
+        self.field = GameField(win=2**17)
+        self.qvs = util.Counter()
         self.alpha = 0.9
         self.epsilon = 0.01
         self.discount = 0.8
+        self.episodeRewards = 0
 
     def getLegalActions(self, state):
         legals = []
@@ -25,7 +26,7 @@ class QLearner:
           Returns Q(state,action). Unseen states are 0.0
         """
         if (state, action) in self.qvs:
-          return self.qValues[(state, action)]
+          return self.qvs[(state, action)]
         else:
           return 0.0
 
@@ -75,13 +76,21 @@ class QLearner:
         q = self.getQValue(state, action)
         value = self.getValue(nextState)
         new_q = (1-self.alpha) * q + self.alpha * (reward + self.discount*value)
-        self.qValues[(state, action)] = new_q
+        self.qvs[(state, action)] = new_q
 
     def getPolicy(self, state):
         return self.computeActionFromQValues(state)
 
     def getValue(self, state):
         return self.computeValueFromQValues(state)
+
+    def observeTransition(self, state,action,nextState,deltaReward):
+        """
+            Called by environment to inform agent that a transition has
+            been observed.
+        """
+        self.episodeRewards += deltaReward
+        self.update(state,action,nextState,deltaReward)
 
     def play(self):
         state_actions = {}
@@ -108,25 +117,29 @@ class QLearner:
                 return 'Init'
             if action == 'Exit':
                 return 'Exit'
-            if field.move(action):  # move successful
+            temp_field = deepcopy(field)
+            current_score = temp_field.score
+            if field.move(action):
+                score_diff = field.score - current_score
+                self.observeTransition(field, action, temp_field, score_diff)
                 if field.is_win():
                     return 'Win'
                 if field.is_gameover():
                     return 'Gameover'
             return 'Game'
+            
         state_actions['Game'] = game
-
         state = 'Init'
         while state != 'Exit':
             state = state_actions[state]()
 
 def __main__():
   agent = QLearner()
-  
+  sum_highscore = 0
   for i in range(100):
-    print(agent.field.score)
     agent.play()
-    # agent.update(...)
-    print(agent.field.score)
+    agent.field.reset()
+    sum_highscore += agent.field.highscore
+  print("Average highscore: ", sum_highscore/100)
 
 __main__()
