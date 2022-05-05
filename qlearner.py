@@ -2,19 +2,24 @@ import random
 import numpy as np
 from game import *
 import curses
+import util
+
+actions = ['Up', 'Left', 'Down', 'Right', 'Restart', 'Exit']
 
 class QLearner:
     def __init__(self):
+        self.field = GameField(win=2048)
         self.qvs = {}
         self.alpha = 0.9
         self.epsilon = 0.01
         self.discount = 0.8
 
-    def getNextAction(self):
-        return 'Up'
     def getLegalActions(self, state):
-        return 'Up' # Test purposes
-
+        legals = []
+        for action in actions:
+          if state.move_is_possible(action):
+            legals.append(action)
+        return legals
     def getQValue(self, state, action):
         """
           Returns Q(state,action). Unseen states are 0.0
@@ -43,7 +48,6 @@ class QLearner:
         legal = self.getLegalActions(state)
         if not len(legal): 
           return None
-
         actions = util.Counter()
         for action in legal:
           actions[action] = self.getQValue(state, action)
@@ -58,7 +62,7 @@ class QLearner:
         legalActions = self.getLegalActions(state)
         if not len(legalActions):
           return None
-        if util.flipCoin(self.epsilon):
+        if random.random() < self.epsilon:
           return random.choice(legalActions)
         else:
           return self.getPolicy(state)
@@ -80,11 +84,11 @@ class QLearner:
         return self.computeValueFromQValues(state)
 
     def play(self):
-        game_field = GameField(win=2048)
         state_actions = {}
+        field = self.field
 
         def init():
-            game_field.reset()
+            field.reset()
             return 'Game'
 
         state_actions['Init'] = init
@@ -99,18 +103,15 @@ class QLearner:
         state_actions['Gameover'] = lambda: not_game('Gameover')
 
         def game():
-            a = ['Up', 'Left', 'Down', 'Right']
-            random.shuffle(a)
-            action = a[0]
-            print(game_field.score)
+            action = self.getAction(field)
             if action == 'Restart':
                 return 'Init'
             if action == 'Exit':
                 return 'Exit'
-            if game_field.move(action):  # move successful
-                if game_field.is_win():
+            if field.move(action):  # move successful
+                if field.is_win():
                     return 'Win'
-                if game_field.is_gameover():
+                if field.is_gameover():
                     return 'Gameover'
             return 'Game'
         state_actions['Game'] = game
@@ -121,7 +122,11 @@ class QLearner:
 
 def __main__():
   agent = QLearner()
-  agent.play()
-
+  
+  for i in range(100):
+    print(agent.field.score)
+    agent.play()
+    # agent.update(...)
+    print(agent.field.score)
 
 __main__()
