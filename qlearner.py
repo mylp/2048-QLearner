@@ -6,9 +6,10 @@ import util
 
 actions = ['Up', 'Left', 'Down', 'Right', 'Restart', 'Exit']
 
+
 class QLearner:
     def __init__(self):
-        self.field = GameField(win=2**17)
+        self.field = GameField(win=2**10)
         self.qvs = util.Counter()
         self.alpha = 0.9
         self.epsilon = 0.01
@@ -18,18 +19,18 @@ class QLearner:
     def getLegalActions(self, state):
         legals = []
         for action in actions:
-          if state.move_is_possible(action):
-            legals.append(action)
+            if state.move_is_possible(action):
+                legals.append(action)
         return legals
+
     def getQValue(self, state, action):
         """
           Returns Q(state,action). Unseen states are 0.0
         """
         if (state, action) in self.qvs:
-          return self.qvs[(state, action)]
+            return self.qvs[(state, action)]
         else:
-          return 0.0
-
+            return 0.0
 
     def computeValueFromQValues(self, state):
         """
@@ -38,20 +39,20 @@ class QLearner:
         """
         legal = self.getLegalActions(state)
         if not len(legal):
-          return 0.0
+            return 0.0
         else:
-          return max([self.getQValue(state, action) for action in legal])
+            return max([self.getQValue(state, action) for action in legal])
 
     def computeActionFromQValues(self, state):
         """
           Compute the best action to take in a state.
         """
         legal = self.getLegalActions(state)
-        if not len(legal): 
-          return None
+        if not len(legal):
+            return None
         actions = util.Counter()
         for action in legal:
-          actions[action] = self.getQValue(state, action)
+            actions[action] = self.getQValue(state, action)
         return actions.argMax()
 
     def getAction(self, state):
@@ -62,11 +63,11 @@ class QLearner:
         """
         legalActions = self.getLegalActions(state)
         if not len(legalActions):
-          return None
+            return None
         if random.random() < self.epsilon:
-          return random.choice(legalActions)
+            return random.choice(legalActions)
         else:
-          return self.getPolicy(state)
+            return self.computeActionFromQValues(state)
 
     def update(self, state, action, nextState, reward):
         """
@@ -74,87 +75,57 @@ class QLearner:
           state = action => nextState and reward transition.
         """
         q = self.getQValue(state, action)
-        value = self.getValue(nextState)
-        new_q = (1-self.alpha) * q + self.alpha * (reward + self.discount*value)
+        value = self.computeValueFromQValues(state)
+        new_q = (1-self.alpha) * q + self.alpha * \
+            (reward + self.discount*value)
         self.qvs[(state, action)] = new_q
 
-    def getPolicy(self, state):
-        return self.computeActionFromQValues(state)
-
-    def getValue(self, state):
-        return self.computeValueFromQValues(state)
-
-    def observeTransition(self, state,action,nextState,deltaReward):
+    def observe(self, state, action, nextState, deltaReward):
         """
             Called by environment to inform agent that a transition has
             been observed.
         """
         self.episodeRewards += deltaReward
-        self.update(state,action,nextState,deltaReward)
+        self.update(state, action, nextState, deltaReward)
 
-    def play(self):
-        state_actions = {}
+    def teach(self):
         field = self.field
+        playing = True
 
-        def init():
-            field.reset()
-            return 'Game'
-
-        state_actions['Init'] = init
-
-        def not_game(state):
-            action = 'Exit'
-            responses = defaultdict(lambda: state)
-            responses['Restart'], responses['Exit'] = 'Init', 'Exit'
-            return responses[action]
-        
-        state_actions['Win'] = lambda: not_game('Win')
-        state_actions['Gameover'] = lambda: not_game('Gameover')
-
-        def game():
+        def learning():
             action = self.getAction(field)
-            if action == 'Restart':
-                return 'Init'
-            if action == 'Exit':
-                return 'Exit'
-            temp_field = deepcopy(field)
-            current_score = temp_field.score
-            if field.move(action):
-                score_diff = field.score - current_score
-                self.observeTransition(field, action, temp_field, score_diff)
-                if field.is_win():
-                    return 'Win'
-                if field.is_gameover():
-                    return 'Gameover'
-            return 'Game'
-            
-        state_actions['Game'] = game
-        state = 'Init'
-        while state != 'Exit':
-            state = state_actions[state]()
+            old_field = deepcopy(field)
+            if field.move(action):  # Legal action
+                field.moveCount += 1
+                # We could probably tweak it a bit
+                self.observe(old_field, action, field, (field.score - old_field.score))
+                if field.is_win() or field.is_gameover():
+                    return False
+            return True
+
+        while playing:
+            playing = learning()
 
 def __main__():
+    agent, agent2 = QLearner(), QLearner()
+    highscore = 0
 
-  """ 
-  How do we know if the agent is learning?
+    for _ in range(50):
+        agent.teach()
+        if highscore < agent.field.highscore:
+          highscore = agent.field.highscore
+        agent.field.reset()
+    
+    print("Best highscore after 50 episodes: ", highscore)
+    highscore = 0
 
-  """
+    for _ in range(1000):
+        agent2.teach()
+        if highscore < agent2.field.highscore:
+          highscore = agent2.field.highscore
+        agent2.field.reset()
+    
+    print("Best highscore after 1000 episodes: ", highscore)
 
-
-  agent = QLearner()
-  sum_highscore = 0
-  for i in range(50):
-    agent.play()
-    agent.field.reset()
-    sum_highscore += agent.field.highscore
-  print("Average highscore after 50 iterations: ", sum_highscore/50)
-
-  agent2 = QLearner()
-  sum_highscore = 0
-  for i in range(200):
-    agent2.play()
-    agent2.field.reset()
-    sum_highscore += agent2.field.highscore
-  print("Average highscore after 200 iterations: ", sum_highscore/200)
 
 __main__()

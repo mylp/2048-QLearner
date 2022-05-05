@@ -30,6 +30,8 @@ class GameField(object):
         self.win_value = win
         self.score = 0
         self.highscore = 0
+        self.mergeCount = 0
+        self.moveCount = 0
         self.reset()
 
     def reset(self):
