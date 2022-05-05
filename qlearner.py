@@ -95,36 +95,34 @@ class QLearner:
         def learning():
             action = self.getAction(field)
             old_field = deepcopy(field)
-            if field.move(action):  # Legal action
+            if field.move(action):
                 field.moveCount += 1
-                # We could probably tweak it a bit
-                self.observe(old_field, action, field, (field.score - old_field.score))
-                if field.is_win() or field.is_gameover():
+                # Need to tweak reward system
+                self.observe(old_field, action, field,
+                             (field.score - old_field.score))
+                if field.is_gameover():
                     return False
             return True
 
         while playing:
             playing = learning()
 
+
 def __main__():
-    agent, agent2 = QLearner(), QLearner()
-    highscore = 0
+    agent, agent2, highscore = QLearner(), QLearner(), 0
 
     for _ in range(50):
         agent.teach()
-        if highscore < agent.field.highscore:
-          highscore = agent.field.highscore
+        highscore = max(highscore, agent.field.highscore)
         agent.field.reset()
-    
     print("Best highscore after 50 episodes: ", highscore)
+
     highscore = 0
 
     for _ in range(1000):
         agent2.teach()
-        if highscore < agent2.field.highscore:
-          highscore = agent2.field.highscore
+        highscore = max(highscore, agent2.field.highscore)
         agent2.field.reset()
-    
     print("Best highscore after 1000 episodes: ", highscore)
 
 
