@@ -134,12 +134,27 @@ class QLearner:
             state = state_actions[state]()
 
 def __main__():
+
+  """ 
+  How do we know if the agent is learning?
+
+  """
+
+
   agent = QLearner()
   sum_highscore = 0
-  for i in range(100):
+  for i in range(50):
     agent.play()
     agent.field.reset()
     sum_highscore += agent.field.highscore
-  print("Average highscore: ", sum_highscore/100)
+  print("Average highscore after 50 iterations: ", sum_highscore/50)
+
+  agent2 = QLearner()
+  sum_highscore = 0
+  for i in range(200):
+    agent2.play()
+    agent2.field.reset()
+    sum_highscore += agent2.field.highscore
+  print("Average highscore after 200 iterations: ", sum_highscore/200)
 
 __main__()
